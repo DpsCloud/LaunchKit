@@ -27,15 +27,16 @@ const Page = () => {
     try {
       console.log("onSignup");
 
+      const formData = watch();
       const data = {
-        name: watch("fullName"),
-        email: watch("Email"),
-        password: watch("Password"),
+        name: formData.fullName,
+        email: formData.Email,
+        password: formData.Password,
       };
 
-      console.log(data);
+      console.log("Signup data:", data);
 
-      if (!watch("Password") || !watch("Email") || !watch("fullName")) {
+      if (!data.password || !data.email || !data.name) {
         toast.error("Please fill all the fields");
         return;
       }
@@ -44,29 +45,31 @@ const Page = () => {
 
       const res = await axios.post("/api/user/signup", data);
 
-      console.log(res.data);
+      console.log("Signup response:", res.data);
 
       if (res.data.success) {
         toast.success(res.data.message);
         router.push("/login");
       } else {
-        console.log(res.data.message);
+        toast.error(res.data.error || "Signup failed");
       }
     } catch (error: any) {
-      console.log(error.response.data.error);
-      toast.error(error.response.data.error || error.message);
+      console.error("Signup error:", error);
+      const errorMessage = error.response?.data?.error || error.message || "An unexpected error occurred";
+      toast.error(errorMessage);
     } finally {
       setisLoading(false);
     }
   };
 
   useEffect(() => {
-    if (watch("username") && watch("Email") && watch("Password")) {
+    const formData = watch();
+    if (formData.fullName && formData.Email && formData.Password) {
       setButtonEnabled(true);
     } else {
       setButtonEnabled(false);
     }
-  }, [watch("username"), watch("Email"), watch("Password")]);
+  }, [watch("fullName"), watch("Email"), watch("Password")]);
 
   return (
     <div className="flex min-h-screen  flex-col gap-4  items-center justify-center  ">

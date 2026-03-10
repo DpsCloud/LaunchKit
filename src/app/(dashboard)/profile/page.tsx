@@ -8,10 +8,12 @@ import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import PushNotificationManager from "@/components/PushNotificationManager";
 
 const Profile = () => {
-  // throw new Error("Client-side error");
-
+  const router = useRouter();
   const { data: session, status } = useSession({
     required: true,
     onUnauthenticated() {
@@ -19,44 +21,47 @@ const Profile = () => {
     },
   });
 
-  const onCancelSubscription = async () => {
-    try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const responseJson = await res.json();
-
-      console.log(responseJson);
-    } catch (error) {}
-  };
-
-  // console.log("status: ", status);
-
-  const router = useRouter();
-  const [user, setUser] = React.useState<any>(null);
-
-  const logout = async () => {
-    try {
-      const res = await signOut({
-        callbackUrl: "/login",
-        redirect: true,
-      });
-      // console.log("Logout: ", res);
-    } catch (error: any) {
-      console.log(error);
-    }
-  };
+  if (status === "loading") {
+    return <div className="h-full flex items-center justify-center">Loading...</div>;
+  }
 
   return (
-    <div className="h-full flex-col gap-4 flex items-center justify-center ">
-      <h1>Profile</h1>
+    <div className="container mx-auto max-w-2xl py-12 px-4">
+      <Card className="mb-8">
+        <CardHeader className="flex flex-row items-center gap-4">
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
+            <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
+          </Avatar>
+          <div>
+            <CardTitle className="text-2xl font-bold">{session?.user?.name}</CardTitle>
+            <p className="text-muted-foreground">{session?.user?.email}</p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="p-3 border rounded bg-muted/20">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Cargo</p>
+              <p className="font-medium capitalize">{(session?.user as any)?.role || "user"}</p>
+            </div>
+            <div className="p-3 border rounded bg-muted/20">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Status</p>
+              <p className="font-medium">Autenticado</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* <Link href={"/admin"}>Admin</Link>
-      <Link href={"/moderation"}>Moderator</Link> */}
-      {/* <Button onClick={onCancelSubscription}>Cancel Subscription</Button> */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold mb-4">Configurações de Notificações</h2>
+        <PushNotificationManager />
+      </div>
+
+      <div className="flex justify-center mt-8">
+        <Button variant="destructive" onClick={() => signOut({ callbackUrl: "/login" })}>
+          Sair da Conta
+        </Button>
+      </div>
     </div>
   );
 };

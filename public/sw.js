@@ -20,8 +20,8 @@ swSelf.addEventListener('push', (e) => {
     e.waitUntil(
       swSelf.registration.showNotification(data.title, {
         body: data.body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
+        icon: '/icons/google.png',
+        badge: '/icons/google.png',
         data: { actionUrl: data.actionUrl },
         tag: data.tag,
       })
