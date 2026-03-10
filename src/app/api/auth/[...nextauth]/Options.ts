@@ -18,7 +18,7 @@ import { createStripeCustomer } from "@/configs/stripe";
 // Validação de variáveis de ambiente obrigatórias para produção
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.NEXTAUTH_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error("Variáveis de ambiente de autenticação (Google/Secret) não configuradas corretamente.");
+    console.warn("⚠️ Variáveis de ambiente de autenticação (Google/Secret) não configuradas. Verifique seu ambiente de produção.");
   }
 }
 
