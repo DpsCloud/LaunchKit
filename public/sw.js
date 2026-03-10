@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
-const swSelf = (self as unknown) as ServiceWorkerGlobalScope;
+/** @type {ServiceWorkerGlobalScope} */
+const swSelf = self;
 
 swSelf.addEventListener('install', () => {
   swSelf.skipWaiting();
