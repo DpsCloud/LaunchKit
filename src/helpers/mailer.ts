@@ -42,14 +42,14 @@ export async function sendMail(
       to: email,
       subject: EMAIL_TYPE.VERIFY ? "Verify your email" : "Reset your password",
       html: `<p>Click <a href="${
-        process.env.DOMAIN
+        process.env.NEXT_PUBLIC_BASE_URL
       }/verifymail?token=${hashToken}">here</a> to ${
         emailType === EMAIL_TYPE.VERIFY
           ? "verify your email"
           : "reset your password"
       }
       or copy and paste the link below in your browser. <br> ${
-        process.env.DOMAIN
+        process.env.NEXT_PUBLIC_BASE_URL
       }/verifymail?token=${hashToken}
       </p>`,
     };

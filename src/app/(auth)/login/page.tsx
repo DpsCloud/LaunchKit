@@ -47,7 +47,7 @@ const Page = () => {
 
       const res = await signIn("credentials", {
         redirect: true,
-        callbackUrl: "http://localhost:3000/profile",
+        callbackUrl: "/profile",
         ...data,
       });
 
@@ -71,7 +71,7 @@ const Page = () => {
       setisGoogleLoading(true);
       const res = await signIn("google", {
         redirect: true,
-        callbackUrl: "http://localhost:3000/profile",
+        callbackUrl: "/profile",
       });
 
       if (res?.error) {

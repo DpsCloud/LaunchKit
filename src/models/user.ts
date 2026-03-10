@@ -35,6 +35,7 @@ const userSchema = new mongoose.Schema({
   stripeCustomerId: {
     type: String,
     unique: true,
+    sparse: true,
   },
   stripePriceId: {
     type: String,
@@ -45,6 +46,7 @@ const userSchema = new mongoose.Schema({
   stripeSubscriptionId: {
     type: String,
     unique: true,
+    sparse: true,
   },
   varificationToken: String,
   varificationTokenExpire: Date,

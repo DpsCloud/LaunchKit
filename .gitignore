@@ -5,8 +5,16 @@
 /.pnp
 .pnp.js
 
-#env
+# environment variables
 .env
+.env*.local
+.env.development
+.env.production
+.env.test
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
 
 # testing
 /coverage
@@ -27,8 +35,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
 
 # vercel
 .vercel
