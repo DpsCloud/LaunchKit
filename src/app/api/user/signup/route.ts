@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { StatusCodes } from "http-status-codes";
 import { sendMail } from "@/helpers/mailer";
 import { EMAIL_TYPE } from "@/constants/email";
-// import { createStripeCustomer } from "@/configs/stripe";
+import { createStripeCustomer } from "@/configs/stripe";
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,11 +40,21 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Criar cliente no Stripe
+    let stripeCustomerId = null;
+    try {
+      const customer = await createStripeCustomer(email);
+      stripeCustomerId = customer.id;
+    } catch (stripeError) {
+      console.error("Erro ao criar cliente no Stripe:", stripeError);
+    }
+
     const createdUser = await Users.create({
       name,
       email,
       provider: "credentials",
       password: hashedPassword,
+      stripeCustomerId: stripeCustomerId,
     });
 
     console.log("createdUser", createdUser);

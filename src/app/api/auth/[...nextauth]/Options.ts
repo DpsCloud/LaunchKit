@@ -15,113 +15,137 @@ import { EMAIL_TYPE } from "@/constants/email";
 import { sendMail } from "@/helpers/mailer";
 import { createStripeCustomer } from "@/configs/stripe";
 
+// Validação de variáveis de ambiente obrigatórias para produção
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.NEXTAUTH_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Variáveis de ambiente de autenticação (Google/Secret) não configuradas corretamente.");
+  }
+}
+
 export const options: NextAuthOptions = {
-  // adapter: MongoDBAdapter(clientPromise) as Adapter,
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
     Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", placeholder: "jsmith" },
-        password: { label: "Password", placeholder: "password" },
+        email: { label: "Email", placeholder: "user@example.com" },
+        password: { label: "Password", placeholder: "********" },
       },
 
       async authorize(credentials) {
-        if (!credentials || !credentials.email || !credentials.password) {
-          return null;
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Credenciais incompletas.");
         }
         await connectDB();
 
         const foundUser = await Users.findOne({ email: credentials.email });
 
-        if (!foundUser) {
-          return null;
+        if (!foundUser || !foundUser.password) {
+          throw new Error("Usuário não encontrado ou senha não configurada.");
         }
+        
         const isMatch = await bcrypt.compare(
           credentials.password,
           foundUser.password
         );
 
         if (!isMatch) {
-          return null;
-        } else {
-          return foundUser;
+          throw new Error("Senha incorreta.");
         }
+        
+        return foundUser;
       },
     }),
   ],
 
   callbacks: {
-    async jwt({ token, user, profile }: any) {
-      console.log("profile", profile);
-      console.log("user", user);
-
+    async jwt({ token, user }) {
       if (user) {
-        token.role = profile?.role || user.role;
-        token.name = user?.username || user.name;
+        token.role = (user as any).role;
+        token.name = (user as any).username || (user as any).name;
       }
       return token;
     },
 
     async signIn({ account, profile }: any) {
-      if (account!.provider === "google") {
-        console.log("profile", profile);
-        console.log("account", account);
+      if (account?.provider === "google") {
+        if (!profile?.email) {
+          throw new Error("Email não fornecido pelo Google.");
+        }
 
         try {
           await connectDB();
-          const email = profile!.email;
-          const emailVerified = profile!.email_verified;
-          const name = profile!.name;
+          const { email, email_verified, name, picture } = profile;
 
           const userFound = await Users.findOne({ email });
 
           if (!userFound) {
-            const usercreated = await Users.create({
-              email: email,
-              name: name,
+            // Criar cliente no Stripe imediatamente
+            let stripeCustomerId = null;
+            try {
+              const customer = await createStripeCustomer(email);
+              stripeCustomerId = customer.id;
+            } catch (stripeError) {
+              console.error("Erro ao criar cliente no Stripe:", stripeError);
+            }
+
+            // Criação de novo usuário via Google
+            const userCreated = await Users.create({
+              email,
+              name,
+              image: picture,
               role: "user",
               provider: "google",
-              isVarified: emailVerified,
+              isVarified: email_verified,
+              stripeCustomerId: stripeCustomerId, // Adicionando ID do Stripe
             });
-            if (!usercreated) {
-              return false;
+
+            if (!userCreated) return false;
+
+            // Se não verificado no Google, envia email de verificação
+            if (!email_verified) {
+              await sendMail(email, userCreated._id.toString(), EMAIL_TYPE.VERIFY);
             }
 
-            if (!emailVerified) {
-              await sendMail(email, usercreated._id, EMAIL_TYPE.VERIFY);
-            }
-
-            profile!.role = usercreated.role;
-
-            return account;
+            profile.role = userCreated.role;
           } else {
-            account.role = userFound.role;
+            // Se o usuário existe mas não tem Stripe Customer ID, cria agora
+            if (!userFound.stripeCustomerId) {
+              try {
+                const customer = await createStripeCustomer(email);
+                await Users.findByIdAndUpdate(userFound._id, { 
+                  stripeCustomerId: customer.id 
+                });
+              } catch (stripeError) {
+                console.error("Erro ao atualizar cliente no Stripe:", stripeError);
+              }
+            }
+
+            // Atualiza papel do usuário existente no perfil da sessão
             profile.role = userFound.role;
-
-            return account;
+            
+            // Opcional: Atualizar info do usuário vinda do Google (ex: imagem)
+            if (!userFound.image && picture) {
+              await Users.findByIdAndUpdate(userFound._id, { image: picture });
+            }
           }
-
-          return account;
+          return true;
         } catch (error) {
-          console.log(error);
-
+          console.error("Erro no callback de login (Google):", error);
           return false;
         }
       }
-
-      return account;
+      return true;
     },
 
     async session({ session, token }) {
       if (session?.user) {
-        session.user.role = token.role as string;
-        session.user.name = token.name as string;
+        (session.user as any).role = token.role;
+        (session.user as any).name = token.name;
       }
-
       return session;
     },
   },
@@ -131,7 +155,6 @@ export const options: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
-    newUser: "/signup",
-    verifyRequest: "/verifymail",
+    error: "/login", // Redireciona erros de login para a página de login
   },
 };

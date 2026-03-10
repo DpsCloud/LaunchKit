@@ -14,10 +14,17 @@ const connectDB = async () => {
 
     console.log("⏳ Conectando ao MongoDB...");
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000, // 10 segundos para timeout
+      serverSelectionTimeoutMS: 10000,
+      maxPoolSize: 10, // Importante para produção
     });
 
     console.log(`✅ MongoDB Conectado: ${conn.connection.host}`);
+    
+    // Sincronizar índices em desenvolvimento
+    if (process.env.NODE_ENV !== "production") {
+      // mongoose.set("debug", true);
+    }
+
   } catch (error: any) {
     console.error(`❌ Erro de conexão com MongoDB: ${error.message}`);
     // Não encerra o processo no ambiente local para não derrubar o servidor
