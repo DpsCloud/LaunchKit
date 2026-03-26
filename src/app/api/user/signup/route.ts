@@ -74,12 +74,21 @@ export async function POST(request: NextRequest) {
         status: StatusCodes.CREATED,
       }
     );
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Signup error:", error);
+    
+    // Tratar erro de índice duplicado do MongoDB
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      return NextResponse.json(
+        { error: `${field === 'email' ? 'Email' : 'Este campo'} já está em uso` },
+        { status: StatusCodes.BAD_REQUEST }
+      );
+    }
+    
     return NextResponse.json(
-      { error: error },
-      {
-        status: StatusCodes.INTERNAL_SERVER_ERROR,
-      }
+      { error: error.message || "Erro ao criar conta" },
+      { status: StatusCodes.INTERNAL_SERVER_ERROR }
     );
   }
 }

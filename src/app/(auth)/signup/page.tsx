@@ -55,7 +55,20 @@ const Page = () => {
       }
     } catch (error: any) {
       console.error("Signup error:", error);
-      const errorMessage = error.response?.data?.error || error.message || "An unexpected error occurred";
+      let errorMessage = "Erro inesperado ao criar conta";
+      
+      if (error.response?.data?.error) {
+        // Se for string, usa diretamente
+        if (typeof error.response.data.error === 'string') {
+          errorMessage = error.response.data.error;
+        } else {
+          // Se for objeto, tenta extrair mensagem útil
+          errorMessage = error.response.data.error.message || "Erro ao processar cadastro";
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast.error(errorMessage);
     } finally {
       setisLoading(false);
