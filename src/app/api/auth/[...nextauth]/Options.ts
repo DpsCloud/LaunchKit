@@ -83,16 +83,23 @@ export const options: NextAuthOptions = {
           const userFound = await Users.findOne({ email });
 
           if (!userFound) {
-            // Criar cliente no Stripe imediatamente
+            // Criar cliente no Stripe imediatamente (apenas se configurado)
             let stripeCustomerId = null;
-            try {
-              const customer = await createStripeCustomer(email);
-              stripeCustomerId = customer.id;
-            } catch (stripeError) {
-              console.error("Erro ao criar cliente no Stripe:", stripeError);
+            if (process.env.STRIPE_SECRET_KEY) {
+              try {
+                const customer = await createStripeCustomer(email);
+                stripeCustomerId = customer.id;
+                console.log("✅ Cliente Stripe criado:", stripeCustomerId);
+              } catch (stripeError: any) {
+                console.error("❌ Erro ao criar cliente no Stripe:", stripeError.message);
+                // Não bloqueia o cadastro se Stripe falhar
+              }
+            } else {
+              console.warn("⚠️ STRIPE_SECRET_KEY não configurada, pulando criação de cliente");
             }
 
             // Criação de novo usuário via Google
+            console.log("📝 Criando usuário:", email);
             const userCreated = await Users.create({
               email,
               name,
@@ -100,10 +107,15 @@ export const options: NextAuthOptions = {
               role: "user",
               provider: "google",
               isVarified: email_verified,
-              stripeCustomerId: stripeCustomerId, // Adicionando ID do Stripe
+              stripeCustomerId: stripeCustomerId,
             });
 
-            if (!userCreated) return false;
+            if (!userCreated) {
+              console.error("❌ Falha ao criar usuário no banco");
+              return false;
+            }
+            
+            console.log("✅ Usuário criado com sucesso:", userCreated._id);
 
             // Se não verificado no Google, envia email de verificação
             if (!email_verified) {
@@ -112,15 +124,17 @@ export const options: NextAuthOptions = {
 
             profile.role = userCreated.role;
           } else {
+            console.log("👤 Usuário já existe:", email);
             // Se o usuário existe mas não tem Stripe Customer ID, cria agora
-            if (!userFound.stripeCustomerId) {
+            if (!userFound.stripeCustomerId && process.env.STRIPE_SECRET_KEY) {
               try {
                 const customer = await createStripeCustomer(email);
                 await Users.findByIdAndUpdate(userFound._id, { 
                   stripeCustomerId: customer.id 
                 });
-              } catch (stripeError) {
-                console.error("Erro ao atualizar cliente no Stripe:", stripeError);
+                console.log("✅ Cliente Stripe atualizado para usuário existente");
+              } catch (stripeError: any) {
+                console.error("❌ Erro ao atualizar cliente no Stripe:", stripeError.message);
               }
             }
 
